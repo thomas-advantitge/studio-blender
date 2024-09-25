@@ -256,7 +256,7 @@ def calculate_mapping_for_transition_into_storyboard_entry(
         # Auto mapping with our API
         target = get_coordinates_of_formation(formation, frame=entry.frame_start)
         try:
-            match, clearance = get_api().match_points(source, target, radius=0)
+            match, clearance = get_api().match_points(source, target, radius=0, prefer_stationary=entry.prefer_stationary)
         except Exception as ex:
             if not isinstance(ex, SkybrushStudioAPIError):
                 raise SkybrushStudioAPIError from ex

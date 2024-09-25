@@ -105,6 +105,7 @@ class TransitionEditorBase(Panel):
             layout.separator()
 
         layout.prop(entry, "is_locked")
+        layout.prop(entry, "prefer_stationary")
 
         props = layout.operator(
             RecalculateTransitionsOperator.bl_idname, text="Recalculate"

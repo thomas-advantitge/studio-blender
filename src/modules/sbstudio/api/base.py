@@ -500,12 +500,19 @@ class SkybrushStudioAPI:
         with self._send_request("queries/limits") as response:
             return Limits.from_json(response.as_json())
 
+    def _compare_coordinates(self, a: Coordinate3D, b: Coordinate3D, precision: int) -> bool:
+        """Compares two 3D coordinates for equality with the given precision."""
+        return all(
+            round(a[i], precision) == round(b[i], precision) for i in range(3)
+        )
+    
     def match_points(
         self,
         source: Sequence[Coordinate3D],
         target: Sequence[Coordinate3D],
         *,
         radius: Optional[float] = None,
+        prefer_stationary: bool = False,
     ) -> Tuple[Mapping, Optional[float]]:
         """Matches the points of a source point set to the points of a
         target point set in a way that ensures collision-free straight-line
@@ -517,6 +524,25 @@ class SkybrushStudioAPI:
             transition; ``None`` if not known or not calculated due to
             efficiency reasons
         """
+        if prefer_stationary:
+            # Find points that have the same position in both sets
+            stationary_mapping = {}
+            for i, source_point in enumerate(source):
+                for j, target_point in enumerate(target):
+                    if self._compare_coordinates(source_point, target_point, 2):
+                        stationary_mapping[i] = j
+                        break
+            reverse_stationary_mapping = {v: k for k, v in stationary_mapping.items()}
+            # Filter out these points from the source and target sets
+            filtered_source = []
+            filtered_source_to_source_mapping = {}
+            for i, c in enumerate(source):
+                if i not in stationary_mapping:
+                    filtered_source_to_source_mapping[len(filtered_source)] = i
+                    filtered_source.append(c)
+            source = filtered_source
+            target = [c for i, c in enumerate(target) if i not in reverse_stationary_mapping]
+
         data = {"version": 1, "source": source, "target": target}
         if radius is not None:
             data["radius"] = radius
@@ -526,8 +552,21 @@ class SkybrushStudioAPI:
 
         if result.get("version") != 1:
             raise SkybrushStudioAPIError("invalid response version")
+        
+        mapping = result.get("mapping")
+        clearance = result.get("clearance")
 
-        return result.get("mapping"), result.get("clearance")
+        if prefer_stationary:
+            # Merge the stationary mapping with the result
+            merged_mapping = [None] * (len(mapping) + len(stationary_mapping))
+            for i in range(len(merged_mapping)):
+                if i in reverse_stationary_mapping:
+                    merged_mapping[i] = None
+                else:
+                    merged_mapping[i] = filtered_source_to_source_mapping[mapping.pop(0)]
+            mapping = Mapping(merged_mapping)
+
+        return mapping, clearance
 
     def plan_landing(
         self,

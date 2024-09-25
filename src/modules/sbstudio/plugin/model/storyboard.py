@@ -205,6 +205,14 @@ class StoryboardEntry(PropertyGroup):
             "re-calculated"
         ),
     )
+    prefer_stationary = BoolProperty(
+        name="Prefer stationary",
+        description=(
+            "Whether to prefer stationary drones during auto-matched transitions. "
+            "Stationary drones are those with the same position before and after transition. "
+            "This is useful if you only want to transition a part of the drones while keeping a certain part of the formation. "
+        ),
+    )
 
     # mapping is stored as a string so we don't need to maintain a separate
     # Blender collection as it would not be efficient
